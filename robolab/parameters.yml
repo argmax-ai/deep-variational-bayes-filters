@@ -1,0 +1,187 @@
+# Copyright (C) 2019-2023 Volkswagen Aktiengesellschaft,
+# Berliner Ring 2, 38440 Wolfsburg, Germany
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+env:
+  reset_between_rollouts: true
+  render: false
+  hosts: null
+  reward:
+    type: Env
+  name: ClassicPendulum
+  docker: robolab
+  dataset:
+    policy: Exploration
+    episodes: 50
+    steps: 200
+    generation_batch_size: 10
+    record_generation: false
+    train_ratio: 0.8
+    val_ratio: 0.1
+    test_ratio: 0.1
+    fixed_subset: false
+    path: ClassicPendulum/e50-t200
+experiment:
+  max_interaction_steps: 100000
+  seqm_warmup_steps: 2000
+  collect:
+    exploration_phase: 0
+    data_every_n_steps: 100
+    steps: 1000
+    parallel_agents: 2
+  checkpoint:
+    metric: agent/reward/real_world/dataloader_idx_2
+    mode: max
+  type: MBActorCriticExperiment
+  data_module: OnlineEpisodicOnPolicyDataModule
+dataset:
+  type: SlidingWindow
+  window_size: 40
+  window_shift: 1
+seqm:
+  transition:
+    type: LocallyLinearBaseMatricesTransition
+    n_linear_systems: 16
+    bounded: 0.2
+    regularization: 0.001
+    alpha_network:
+      layers: 2
+      units: 64
+      activation: sigmoid
+  encoder:
+    type: GaussDenseEncoder
+    layers: 1
+    units: 128
+  decoder:
+    type: GaussDenseDecoder
+    layers: 1
+    units: 128
+  initial_network:
+    type: GaussDenseInitialNetwork
+    layers: 1
+    units: 128
+    n_initial_obs: 3
+  optim:
+    _partial_: true
+    _target_: torch.optim.Adam
+    lr: 0.0003
+  type: FusionDVBF
+  batch_size: 64
+  optim_frequency: 1
+  n_z_latent: 8
+  beta_z: 1.0
+  temperature_z: 1000.0
+agent:
+  critic:
+    optim:
+      _partial_: true
+      _target_: torch.optim.Adam
+      lr: 0.0003
+    optim_frequency: 1
+    target_lr: 0.005
+    layers: 2
+    units: 256
+  policy:
+    optim:
+      _partial_: true
+      _target_: torch.optim.Adam
+      lr: 0.0001
+    batch_size: 128
+    optim_frequency: 1
+    type: GaussMlpPolicy
+    network: Dense
+    layers: 2
+    units: 128
+    init_scale: 0.5
+  reward:
+    type: StochasticLearnedReward
+    layers: 2
+    units: 256
+    stop_gradient: true
+  type: MBACAgent
+  act_every_n_steps: 1
+  condition_on_belief: false
+  monte_carlo_value_horizon: 10
+  n_step_temporal_difference: 10
+  reward_weighting: 100.0
+  return_fn:
+    _target_: robolab.returns.NStepReturn
+    discount_factor: 0.99
+    horizon: 5
+replay_buffer:
+  type: UniformReplayMemory
+  size: 100000
+  init: 10000
+  init_from_offline_dataset: false
+trainer:
+  val:
+    check_interval: 1000
+    episodes_for_indv_plots: 5
+    samples_for_indv_plots: 20
+    episodes_for_agg_plots: 500
+    env_episodes: 32
+    env_figures: 3
+    env_steps: 200
+    dream_episodes: 64
+    dream_figures: 3
+    dream_steps: 50
+    predict_filtering_steps: -1
+    episodic_steps: 50
+    episodic_offset: 0
+  test:
+    check_interval: 1000
+    episodes_for_indv_plots: 5
+    samples_for_indv_plots: 20
+    episodes_for_agg_plots: 500
+    env_episodes: 32
+    env_figures: 3
+    env_steps: 200
+    dream_episodes: 64
+    dream_figures: 3
+    dream_steps: 50
+    predict_filtering_steps: -1
+    episodic_steps: 50
+    episodic_offset: 0
+  max_iterations: 100000
+  gradient_clip_val: 1.0
+  gradient_clip_algorithm: norm
+  nvidia_visible_devices: '0'
+  free_cuda_interval: 10000
+  deterministic: false
+  log_level: 2
+  log_weights_summary: 1
+  develop: false
+  resume_from_checkpoint: false
+  logging_steps: 100
+  data_loader_num_workers: 4
+  early_stopping: false
+  early_stopping_metric: val_loss
+  early_stopping_mode: min
+  patience_epochs: 5
+  patience_min_delta: 0.0
+  checkpoint_save_last: false
+  save_checkpoint_period: 5
+  checkpoint_save_top_k: 3
+  weights_summary: false
+  gradients_summary: false
+  persist_data: false
+  periodic_persist: -1
+group: FusionDVBF
+name: ClassicPendulum

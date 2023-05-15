@@ -1,0 +1,34 @@
+version: "3.9"
+services:
+  train:
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile
+    runtime: runc
+    privileged: true
+    volumes:
+      - ./.:/code
+      - ./data:/data
+      - ./outputs:/outputs
+      - ./packages:/packages
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0
+      - CUDA_VISIBLE_DEVICES=0
+      - HDF5_USE_FILE_LOCKING=FALSE
+      - ROBOLAB_DATA_PATH=/data/ClassicPendulum/e50-t200
+      - ROBOLAB_OUTPUTS_PATH=/outputs/FusionDVBF/ClassicPendulum
+    command: /bin/sh -c "ROBOLAB_ARGS=$$(cat /code/robolab/parameters.yml) python3 ./bin/train.py"
+
+  train-gpu:
+    extends: train
+    runtime: nvidia
+
+  tensorboard:
+    network_mode: "host"
+    build:
+      context: ./dockerfiles/tensorboard
+      dockerfile: Dockerfile
+    volumes:
+      - ./outputs:/outputs
+    ports:
+      - "6006:6006"
