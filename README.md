@@ -2,7 +2,7 @@
 
 *This repository is published and maintained by the Volkswagen Group Machine Learning Research Lab.*
 
-*Learn more at https://argmax.ai.*
+*Learn more at https://argmax.org.*
 
 
 # Reference implementation of Deep Variational Bayes Filters
